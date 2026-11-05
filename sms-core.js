@@ -34,7 +34,7 @@ export function cyrb53(str, seed = 0x5d0) {
   return 4294967296 * (2097151 & h2) + (h1 >>> 0);
 }
 export function normPhone(p) {
-  let s = String(p ?? '').replace(/\D/g, '');
+  let s = String(p == null ? '' : p).replace(/\D/g, '');
   if (s.startsWith('972')) s = s.slice(3);
   return s.replace(/^0+/, '');
 }
@@ -91,7 +91,7 @@ export class CsvStream {
     if (r.length === 1 && r[0] === '') return;
     if (!this.header) { this.header = r.map(cleanHeader); return; }
     const o = {};
-    for (let i = 0; i < this.header.length; i++) o[this.header[i]] = r[i] ?? '';
+    for (let i = 0; i < this.header.length; i++) o[this.header[i]] = r[i] == null ? '' : r[i];
     this.onRecord(o);
   }
   push(s) {
@@ -121,6 +121,25 @@ export class CsvStream {
   }
 }
 
+// ---------- report formats ----------
+// Two exports exist: the manual download ("SMS-Messages-Report", תאריך שליחה / סטטוס השליחה / סיבה)
+// and the nightly inforu e-mail ("Sms.SentMessages", מועד שליחה / קוד חיווי לאחר שליחה / חיווי לאחר שליחה).
+// Both are mapped to the first shape.
+const INFORU_STATUS = { '2': 'התקבלה', '0': 'נשלחה', '': 'נשלחה', '-4': 'לא התקבלה, טלפון חסום לשירות' };
+export function normalizeRow(row) {
+  if (row[COL.date] != null || row['מועד שליחה'] == null) return row;
+  const code = String(row['קוד חיווי לאחר שליחה'] == null ? '' : row['קוד חיווי לאחר שליחה']).trim();
+  const text = String(row['חיווי לאחר שליחה'] == null ? '' : row['חיווי לאחר שליחה']).trim();
+  const status = INFORU_STATUS[code] || 'לא התקבלה';
+  return {
+    [COL.date]: row['מועד שליחה'], [COL.phone]: row[COL.phone], [COL.text]: row[COL.text],
+    [COL.sender]: row[COL.sender], [COL.segments]: row[COL.segments], [COL.campaign]: '',
+    [COL.status]: status,
+    [COL.reason]: code === '-4' ? 'Blocked Number' : code === '2' ? 'Delivered' : (text || (code ? 'code ' + code : '')),
+  };
+}
+export const isReportHeader = (headerText) => /תאריך שליחה|מועד שליחה/.test(headerText) && headerText.indexOf('נוסח ההודעה') > -1;
+
 // ---------- classification ----------
 const SURVEY_SIG = /hwt\.io\/u\/|מנהל(?:ת)?\s+(?:ה|ב)?סניף/;
 const BRANCH_RE = /מנהל(?:ת)?\s+(?:ב|ה)?סניף\s*([^\n]+?)\s*$/;
@@ -146,7 +165,7 @@ function headlineName(text) {
   if (!lines.length) return 'ללא נוסח';
   let first = lines[0];
   const c = first.indexOf(',');
-  if (c > -1 && c < 30) first = first.slice(c + 1).trim();
+  if (c > -1 && c < 60) first = first.slice(c + 1).trim();
   if (first.length < 8 && lines[1]) first += ' ' + lines[1];
   first = first.replace(/https?:\S+/g, '').replace(/[A-Z0-9]{5,}/g, '').replace(/\d+/g, '#').replace(/\s+/g, ' ').trim();
   return 'קמפיין: ' + (first.slice(0, 45) || 'ללא כותרת');
@@ -203,6 +222,7 @@ export class DayAggregator {
 
   add(row) {
     this.rows++;
+    row = normalizeRow(row);
     const t = parseDate(row[COL.date]);
     if (!t) { this.skipped++; return; }
     const cls = classify(row);
@@ -250,7 +270,7 @@ export class DayAggregator {
   }
 
   // Finalise: returns [{dayDoc, shards:[string]}] ready to be written.
-  finish(maxShardBytes = 700_000) {
+  finish(maxShardBytes = 700000) {
     const out = [];
     for (const day of this.days.values()) {
       const hist = { 1: 0, 2: 0, 3: 0, 4: 0, '5+': 0 };
