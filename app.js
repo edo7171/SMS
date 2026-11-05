@@ -315,6 +315,8 @@ const VIEWS = {
 
 function render() {
   destroyCharts();
+  // data may have arrived after boot (first import): pick a default period then
+  if ((!S.A || !S.A.from) && lastDate(S.stream)) initPeriod();
   renderNav(); renderBar();
   const v = VIEWS[S.view];
   const el = $('#view');
@@ -806,6 +808,7 @@ async function importCsv(files) {
       await S.db.logImport({ file: file.name, rows: agg.rows, summary, other, at: new Date().toISOString(), by: S.user?.email || '' });
       summaries.push(`<p class="good">${esc(file.name)}: ${esc(summary)}.${other ? ` הודעות אחרות שלא נכללו: ${esc(other)}.` : ''}${agg.skipped ? ` ${fN(agg.skipped)} שורות ללא תאריך דולגו.` : ''}</p>`);
       await reloadDays();
+      if (!S.A || !lastDate(S.stream)) { if (!lastDate(S.stream)) S.stream = Object.keys(byStream)[0]; initPeriod(); }
       for (const [s, b] of Object.entries(byStream)) await saveDailyInsight(s, b.to, dailyInsights(s, b.to));
       S.lastImported = byStream;
     }
