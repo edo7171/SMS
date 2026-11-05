@@ -872,6 +872,17 @@ async function reloadDays() {
   S.freqCache.clear();
 }
 
+// Days imported by the e-mail job have no saved daily analysis yet: create it on first open.
+async function refreshDailyInsights() {
+  for (const stream of ['survey', 'marketing']) {
+    for (const d of daysOf(stream).slice(-3)) {
+      const saved = S.dailyInsights.find((x) => x.stream === stream && x.date === d.date);
+      if (saved && (!d.importedAt || saved.at >= d.importedAt)) continue;
+      try { await saveDailyInsight(stream, d.date, dailyInsights(stream, d.date)); } catch (e) { console.warn('daily insight', e); }
+    }
+  }
+}
+
 function toast(msg) {
   const t = $('#toast'); t.textContent = msg; t.hidden = false;
   clearTimeout(toast._t); toast._t = setTimeout(() => { t.hidden = true; }, 3500);
@@ -893,6 +904,7 @@ export async function start(db) {
       S.settings = { ...defaultSettings, ...(settings || {}) };
       S.responses = responses; S.insights = insights; S.dailyInsights = daily;
       await reloadDays();
+      await refreshDailyInsights();
       if (!daysOf('survey').length && daysOf('marketing').length) S.stream = 'marketing';
       if (!daysOf('survey').length && !daysOf('marketing').length) S.view = 'import';
       initPeriod(); render();
