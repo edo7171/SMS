@@ -1,0 +1,7 @@
+# Never commit raw reports: they contain customer phone numbers and names
+*.csv
+*.xlsx
+*.xls
+data/
+node_modules/
+.firebase/

@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>דשבורד SMS — דומינו׳ס</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Rubik:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root {
+  --ink: #13293d; --muted: #5d6e7e; --paper: #eef2f5; --card: #ffffff; --line: #d6dee5; --grid: #e6ebf0;
+  --blue: #0b6e99; --b-series: #9aa9b6; --red: #c8323f; --green: #1f7f57; --amber: #c48a00;
+  --side: #13293d; --side-ink: #dbe6ee; --pip: #ffffff;
+  --good-bg: #e3f3eb; --bad-bg: #fbe7e9; --warn-bg: #fdf3dc; --info-bg: #e5f0f6;
+  --heat: 200 75% 40%;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink: #e4ebf1; --muted: #93a4b3; --paper: #0f1b25; --card: #172633; --line: #2a3b4a; --grid: #223241;
+    --blue: #4fb3e0; --b-series: #6f8292; --red: #ef6b75; --green: #4cc28d; --amber: #e6b33d;
+    --side: #0a141c; --side-ink: #c4d3df; --pip: #e4ebf1;
+    --good-bg: #173a2b; --bad-bg: #3d1d22; --warn-bg: #3a3017; --info-bg: #16303f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] { color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { background: var(--paper); color: var(--ink); font: 16px/1.5 'Assistant', 'Arial Hebrew', Arial, sans-serif; }
+h1, h2, h3, .kv, .brand { font-family: 'Rubik', 'Assistant', Arial, sans-serif; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+/* login */
+#login { min-height: 100%; display: grid; place-items: center; padding: 24px; }
+.login-box { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 32px; width: min(420px, 100%); }
+.login-box h1 { margin: 0 0 4px; font-size: 1.6rem; }
+.login-box p { color: var(--muted); margin: 0 0 20px; }
+.login-box form { display: grid; gap: 10px; margin-top: 16px; }
+.login-box .err { color: var(--red); min-height: 1.5em; }
+
+/* layout */
+#app { display: grid; grid-template-columns: 232px 1fr; min-height: 100%; }
+.side { background: var(--side); color: var(--side-ink); padding: 20px 16px; display: flex; flex-direction: column; gap: 18px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.brand { font-size: 1.15rem; font-weight: 700; color: #fff; display: flex; gap: 10px; align-items: center; }
+.brand .pipmark { width: 22px; height: 36px; border-radius: 5px; background: var(--blue); position: relative; flex: none; box-shadow: inset 0 0 0 2px rgba(255,255,255,.15); }
+.brand .pipmark::before, .brand .pipmark::after { content: ""; position: absolute; width: 5px; height: 5px; border-radius: 50%; background: #fff; left: 50%; transform: translateX(-50%); }
+.brand .pipmark::before { top: 7px; } .brand .pipmark::after { bottom: 7px; }
+
+/* the domino tile stream switch */
+.tile { display: grid; grid-template-columns: 1fr 1fr; border-radius: 10px; overflow: hidden; border: 2px solid rgba(255,255,255,.18); }
+.tile button { appearance: none; border: 0; background: transparent; color: var(--side-ink); padding: 12px 6px 30px; cursor: pointer; position: relative; font-weight: 600; }
+.tile button + button { border-inline-start: 2px solid rgba(255,255,255,.18); }
+.tile button::after { content: ""; position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); height: 6px; border-radius: 3px; opacity: .35;
+  background: radial-gradient(circle, currentColor 2.5px, transparent 3px) 0 0 / 12px 6px repeat-x; }
+.tile button[data-stream="survey"]::after { width: 12px; }
+.tile button[data-stream="marketing"]::after { width: 36px; }
+.tile button.on { background: #fff; color: var(--side); }
+.tile button.on::after { opacity: 1; }
+#nav { display: flex; flex-direction: column; gap: 2px; }
+.navbtn { appearance: none; border: 0; background: none; text-align: start; padding: 8px 10px; border-radius: 6px; color: var(--side-ink); cursor: pointer; }
+.navbtn:hover { background: rgba(255,255,255,.07); }
+.navbtn.on { background: rgba(255,255,255,.12); color: #fff; font-weight: 700; box-shadow: inset -3px 0 0 var(--blue); }
+.side .foot { margin-top: auto; font-size: .85rem; display: grid; gap: 6px; }
+.side .foot button { appearance: none; background: none; border: 1px solid rgba(255,255,255,.25); color: var(--side-ink); border-radius: 6px; padding: 4px 8px; cursor: pointer; justify-self: start; }
+
+main { min-width: 0; }
+#bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--card); border-bottom: 1px solid var(--line); padding: 10px 24px; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; font-size: .95rem; min-height: 56px; }
+#bar label { display: flex; gap: 6px; align-items: center; }
+#bar select, #bar input, .form input, .form select, .form textarea, .pickers select, .dayhead select { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; }
+#bar .dates { display: inline-flex; gap: 6px; align-items: center; }
+#bar .bdates input { color: var(--muted); }
+.range-note { color: var(--muted); font-size: .85rem; margin-inline-start: auto; }
+#view { padding: 20px 24px 60px; max-width: 1400px; }
+.vt { font-size: 1.55rem; margin: 4px 0 16px; letter-spacing: -.01em; }
+
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; margin-bottom: 16px; min-width: 0; }
+.panel h2 { font-size: 1.05rem; margin: 0 0 12px; }
+.panel h3 { font-size: .98rem; margin: 18px 0 8px; color: var(--blue); }
+.note { color: var(--muted); font-size: .85rem; margin: 10px 0 0; max-width: 80ch; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; align-items: start; }
+.cols > .panel { margin-bottom: 0; }
+.cols + * { margin-top: 16px; }
+
+/* KPI strip: one bar, not five cards */
+.kpis { display: grid; grid-template-columns: repeat(5, 1fr); background: var(--card); border: 1px solid var(--line); border-radius: 8px; margin-bottom: 16px; }
+.kpi { padding: 14px 16px; display: grid; gap: 2px; border-inline-start: 1px solid var(--line); }
+.kpi:first-child { border-inline-start: 0; }
+.kl { color: var(--muted); font-size: .85rem; }
+.kv { font-size: 1.55rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.kd { font-size: .85rem; font-weight: 600; }
+
+/* tables */
+.tablewrap { overflow-x: auto; }
+.tablewrap.scroll { max-height: 460px; overflow-y: auto; }
+table.t { border-collapse: collapse; width: 100%; font-size: .92rem; }
+.t th { text-align: start; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--line); padding: 6px 8px; position: sticky; top: 0; background: var(--card); white-space: nowrap; }
+.t td { border-bottom: 1px solid var(--grid); padding: 6px 8px; vertical-align: top; }
+.t tr:hover td { background: color-mix(in srgb, var(--blue) 5%, transparent); }
+.num { text-align: left; font-variant-numeric: tabular-nums; white-space: nowrap; direction: ltr; unicode-bidi: plaintext; }
+th.num { text-align: left; }
+.ltr { direction: ltr; unicode-bidi: plaintext; font-size: .85rem; }
+.good { color: var(--green); } .bad { color: var(--red); } .muted { color: var(--muted); }
+td.heat { background: hsl(var(--heat) / calc(var(--h) * .28)); }
+td.heat.good-h { background: color-mix(in srgb, var(--green) calc(var(--h) * 30%), transparent); }
+.tag { font-size: .75rem; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; color: var(--muted); }
+
+/* insights */
+ul.insights { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+ul.insights li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 12px; border-radius: 6px; background: var(--info-bg); max-width: 110ch; }
+ul.insights li .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 8px; flex: none; background: var(--blue); }
+ul.insights li.lv-good { background: var(--good-bg); } ul.insights li.lv-good .dot { background: var(--green); }
+ul.insights li.lv-bad { background: var(--bad-bg); } ul.insights li.lv-bad .dot { background: var(--red); }
+ul.insights li.lv-warn { background: var(--warn-bg); } ul.insights li.lv-warn .dot { background: var(--amber); }
+.dayins { margin-bottom: 12px; } .dayins .linkbtn { margin-bottom: 6px; }
+ol.concl { margin: 0; padding-inline-start: 22px; display: grid; gap: 10px; }
+ol.concl li p { margin: 0; max-width: 95ch; }
+ol.concl .src { color: var(--muted); font-size: .8rem; }
+.pri { font-size: .8rem; font-weight: 700; padding: 1px 8px; border-radius: 10px; white-space: nowrap; }
+.pri-h { background: var(--bad-bg); color: var(--red); } .pri-m { background: var(--warn-bg); color: var(--amber); } .pri-l { background: var(--info-bg); color: var(--blue); }
+
+/* controls */
+.btn { appearance: none; border: 0; background: var(--blue); color: #fff; border-radius: 6px; padding: 8px 16px; cursor: pointer; font-weight: 600; }
+.btn:disabled { opacity: .6; cursor: wait; }
+.btn.ghost { background: transparent; color: var(--blue); border: 1px solid var(--blue); }
+.btn.sm { padding: 2px 10px; font-size: .85rem; }
+.x, .linkbtn { appearance: none; background: none; border: 0; color: var(--blue); cursor: pointer; padding: 0; font-size: .85rem; text-decoration: underline; }
+.x { color: var(--muted); margin-inline-start: 8px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-bottom: 16px; background: var(--card); }
+.seg button { appearance: none; border: 0; background: none; padding: 8px 16px; cursor: pointer; }
+.seg button.on { background: var(--ink); color: var(--card); font-weight: 600; }
+.pickers, .dayhead { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin-bottom: 16px; }
+.pickers label, .dayhead label { display: flex; gap: 8px; align-items: center; }
+.form { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: end; }
+.form label { display: grid; gap: 4px; font-size: .9rem; }
+.form label.wide { flex: 1 1 100%; }
+.form textarea { width: 100%; }
+.drop { display: block; border: 2px dashed var(--line); border-radius: 8px; padding: 22px; text-align: center; cursor: pointer; color: var(--blue); font-weight: 600; margin: 8px 0; }
+.drop:hover { border-color: var(--blue); }
+.drop input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.prog .bar { height: 8px; background: var(--grid); border-radius: 4px; overflow: hidden; }
+.prog .bar i { display: block; height: 100%; width: 0; background: var(--blue); transition: width .2s; }
+dl.facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0; }
+dl.facts dt { color: var(--muted); } dl.facts dd { margin: 0; }
+ul.plain { list-style: none; padding: 0; }
+.chart { position: relative; height: 280px; } .chart.tall { height: 340px; }
+.loading, .empty, .error { padding: 40px 0; color: var(--muted); }
+.error { color: var(--red); }
+.empty p { margin-top: 0; }
+#toast { position: fixed; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); left: 20px; background: var(--ink); color: var(--card); padding: 10px 16px; border-radius: 6px; z-index: 50; }
+
+@media (max-width: 900px) {
+  #app { grid-template-columns: 1fr; }
+  .side { position: static; height: auto; flex-direction: column; }
+  #nav { flex-direction: row; flex-wrap: wrap; }
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+  .kpi { border-inline-start: 0; border-top: 1px solid var(--line); }
+  .cols { grid-template-columns: 1fr; }
+  #view { padding: 16px; }
+  #bar { position: static; padding: 10px 16px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div id="login">
+  <div class="login-box">
+    <h1>דשבורד SMS</h1>
+    <p>סקרי לקוחות ודיוור שיווקי — דומינו׳ס</p>
+    <button class="btn" id="gLogin" type="button">כניסה עם Google</button>
+    <form id="eLogin">
+      <input type="email" name="email" placeholder="כתובת מייל" autocomplete="username" required>
+      <input type="password" name="password" placeholder="סיסמה" autocomplete="current-password" required>
+      <button class="btn ghost">כניסה עם מייל וסיסמה</button>
+      <p class="err" id="loginErr" role="alert"></p>
+    </form>
+  </div>
+</div>
+
+<div id="app" hidden>
+  <aside class="side">
+    <div class="brand"><span class="pipmark" aria-hidden="true"></span>SMS דומינו׳ס</div>
+    <div class="tile" role="group" aria-label="סוג הנתונים">
+      <button type="button" data-stream="survey">סקרים</button>
+      <button type="button" data-stream="marketing">דיוור שיווקי</button>
+    </div>
+    <nav id="nav" aria-label="מסכים"></nav>
+    <div class="foot"><span id="who"></span><button id="signout" type="button">יציאה</button></div>
+  </aside>
+  <main>
+    <div id="bar"></div>
+    <div id="view"></div>
+  </main>
+</div>
+<div id="toast" role="status" hidden></div>
+
+<script type="application/json" id="seed-insights">[{"stream": "survey", "kind": "conclusion", "section": "א. תמונה כללית", "text": "מספר הסקרים הראשונים ירד ב־16.5% (מ־413,624 ל־345,215). הירידה עקבית בכל החודשים (15%-, 20%-, 14%-), וגם מערכת הסקרים מראה ירידה זהה במספר הלקוחות (16.5%-). כלומר הירידה אינה בעיית שליחה, אלא פחות הזמנות שמקבלות סקר, או שינוי בכללי הזכאות לסקר. כדאי לבדוק מול נתוני ההזמנות.", "source": "סקרים לפי חודש", "order": 1, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "survey", "kind": "conclusion", "section": "א. תמונה כללית", "text": "סך הודעות הסקר כמעט לא השתנה (1.3%-), כי ב־2026 נוספו 62,932 תזכורות, שלא היו קיימות ב־2025.", "source": "סיכום 2025 מול 2026", "order": 2, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "survey", "kind": "conclusion", "section": "א. תמונה כללית", "text": "המקטעים לחיוב עלו ב־33% (מ־302 אלף ל־402 אלף), למרות שמספר ההודעות כמעט זהה. הסיבות: שורת \"מוצר במתנה\" (כ־79 אלף מקטעים עודפים) ותזכורות (כ־67 אלף מקטעים).", "source": "נוסח ההודעה", "order": 3, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "survey", "kind": "conclusion", "section": "ב. מסירה וכשלים", "text": "שיעור המסירה של הסקרים השתפר מ־72.8% ל־74.0%, ושיעור החסימה ירד מ־27.0% ל־25.8%. השיפור עקבי בכל שלושת החודשים.", "source": "סקרים לפי חודש", "order": 4, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "survey", "kind": "conclusion", "section": "ב. מסירה וכשלים", "text": "רשימת החסימה יציבה: 22,935 לקוחות חסומים בשתי השנים, ורק 162 לקוחות חוזרים שלא היו חסומים ב־2025 נחסמו ב־2026. לקוחות חוסמים כמעט תמיד כבר בפעם הראשונה, ולכן ההודעה הראשונה ללקוח חדש היא הקריטית.", "source": "לקוחות", "order": 5, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "survey", "kind": "conclusion", "section": "ב. מסירה וכשלים", "text": "כשלים טכניים נשארו זניחים (כ־0.2%), אבל ההרכב השתנה: \"פג תוקף\" כמעט הוכפל (מ־9 ל־17 לכל 10,000 הודעות), הופיעו תקלות מערכת וממשק (64) ומספרים לא תקינים (123, רובם באוגוסט 2026), בעוד כשלי מסירה כלליים ירדו ב־68%. ייתכן שהשתנה מסלול השליחה אצל הספק.", "source": "סוגי כשלים", "order": 6, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "survey", "kind": "conclusion", "section": "ג. מענה לסקר", "text": "שיעור המענה (ענו מתוך תוקשרו) עלה מ־15.0% ל־15.7%. השיפור הגיע משני השלבים: שיעור הלחיצה עלה מ־16.9% ל־17.3%, ושיעור ההשלמה אחרי לחיצה עלה מ־88.9% ל־90.5%.", "source": "משפך מענה", "order": 7, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "survey", "kind": "conclusion", "section": "ג. מענה לסקר", "text": "למרות השיפור בשיעור, מספר המענים ירד ב־11.6% (מ־44,713 ל־39,532). פירוק השינוי: הירידה בכמות הלקוחות \"עלתה\" כ־6,800 מענים, והשיפור בשיעור המענה החזיר כ־1,600 בלבד.", "source": "משפך מענה", "order": 8, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "survey", "kind": "conclusion", "section": "ג. מענה לסקר", "text": "העלות למענה עלתה בכ־50%: מ־6.8 מקטעים לכל מענה ב־2025 ל־10.2 ב־2026. השיפור בשיעור המענה לא מכסה את העלות הנוספת של התזכורות ושורת המתנה.", "source": "סיכום 2025 מול 2026", "order": 9, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "survey", "kind": "conclusion", "section": "ג. מענה לסקר", "text": "תזכורות: בסניפים שבהם נשלחו יותר תזכורות, שיעור המענה השתפר יותר (מתאם 0.40). התזכורות נמסרות ב־98.6% כמעט בלי חסימות. זה הסימן החזק ביותר לכך שהתזכורות הן המנוע של השיפור, אם כי מתאם אינו מוכיח סיבתיות.", "source": "מענה לפי סניף", "order": 10, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "survey", "kind": "conclusion", "section": "ג. מענה לסקר", "text": "שורת המתנה: אין קשר בין שיעור ההודעות עם שורת המתנה בסניף לבין השיפור במענה (מתאם 0.09), ו־79% מההודעות האלה מחויבות כשני מקטעים. בנתונים הקיימים אין עדות שהשורה תורמת למענה, והיא מייקרת משמעותית את השליחה.", "source": "מענה לפי סניף, נוסח ההודעה", "order": 11, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "survey", "kind": "conclusion", "section": "ג. מענה לסקר", "text": "אלגד שיפרו את שיעור המענה ב־1.1 נקודות (מ־15.6% ל־16.8%), בעיקר בזכות שיעור הלחיצה. אצל הזכיינים כמעט אין שינוי (מ־14.4% ל־14.6%), ושיעור הלחיצה שלהם זהה לשנה שעברה. הפער בין אלגד לזכיינים גדל.", "source": "משפך מענה", "order": 12, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "survey", "kind": "conclusion", "section": "ג. מענה לסקר", "text": "באזורים: השיפור הגדול ביותר ב\"מג׳ד אדיב\" (4.3+ נק׳), \"מוחמד חלף\" (3.0+) ו\"הרצליה\" (2.8+). \"שירלי שמעוני גולדברג\" ו\"אזור זכיינים\" כמעט לא השתנו ונשארו בתחתית.", "source": "משפך מענה", "order": 13, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "survey", "kind": "conclusion", "section": "ג. מענה לסקר", "text": "בסניפים: 43 מתוך 64 סניפים שיפרו את שיעור המענה. השיפור הגדול ביותר בזכרון יעקב (7.3+), כפר סבא ירוקה (6.6+) ומודיעין מליבו (6.3+). הירידות הבולטות באשדוד הכשר (4.5-), ראשון לציון מזרח (2.9-) ונס ציונה (2.1-). סניפים שהיו גבוהים ב־2025 נטו לרדת (חזרה לממוצע, מתאם 0.40-).", "source": "מענה לפי סניף", "order": 14, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "survey", "kind": "conclusion", "section": "ד. תזמון השליחה", "text": "לוח השליחה השתנה: השליחה בשעה 11:00 כמעט נעלמה (מ־19,457 ל־17), ושליחת הבוקר ב־9:00 ירדה ב־39%. מנגד, נשלחים יותר סקרים בשעות 13:00 ו־18:00–19:00, ופחות בשעות 22:00–23:00.", "source": "שעות וימים", "order": 15, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "survey", "kind": "conclusion", "section": "ד. תזמון השליחה", "text": "לפי ימים: הירידה החדה ביותר ביום שישי (33.5%-) ויום ראשון (27%-), כמעט ללא שינוי בימי שלישי וחמישי (5%- עד 6%-). שווה לבדוק אם מדובר בשינוי בדפוס ההזמנות או בהגדרות השליחה.", "source": "שעות וימים", "order": 16, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "survey", "kind": "conclusion", "section": "ד. תזמון השליחה", "text": "בשתי השנים לא נשלחו סקרים ביום כיפור, ולמחרת נשלחו הודעות להשלמת הפער. ההתנהלות סביב החגים עקבית.", "source": "יומי", "order": 17, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "survey", "kind": "conclusion", "section": "ה. לקוחות", "text": "38.8% מהלקוחות שקיבלו סקר ב־2025 קיבלו סקר גם ב־2026, ו־104 אלף לקוחות קיבלו סקר לראשונה ב־2026.", "source": "לקוחות", "order": 18, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "survey", "kind": "conclusion", "section": "ה. לקוחות", "text": "ממוצע הסקרים ללקוח ירד מעט (מ־1.96 ל־1.85), אבל עדיין אין הגבלת תדירות: לקוח אחד קיבל 60 סקרים בשלושה חודשים (53 ב־2025).", "source": "לקוחות", "order": 19, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "survey", "kind": "recommendation", "section": "המלצות", "priority": "גבוהה", "text": "לקצר את הנוסח עם שורת המתנה כך שייכנס במקטע אחד (כ־10 תווים פחות), או להסיר את השורה.", "why": "כ־79 אלף מקטעים עודפים בחודשיים, ואין עדות לתרומה למענה.", "order": 20, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "survey", "kind": "recommendation", "section": "המלצות", "priority": "גבוהה", "text": "לבקש ממערכת הסקרים נתוני מענה לפי קוד הקישור, או לפחות לפי שבוע ולפי נוסח, ולהריץ בדיקת A/B מסודרת של שורת המתנה.", "why": "כרגע אי אפשר לבודד את השפעת הנוסח והתזכורות על המענה.", "order": 21, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "survey", "kind": "recommendation", "section": "המלצות", "priority": "גבוהה", "text": "לבדוק מול נתוני ההזמנות את הירידה של 16.5% בכמות הסקרים.", "why": "צריך לוודא שכל ההזמנות הזכאיות אכן מקבלות סקר.", "order": 22, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "survey", "kind": "recommendation", "section": "המלצות", "priority": "בינונית", "text": "להשאיר את התזכורות ולהרחיב אותן לסניפים שבהם יש מעט תזכורות (פחות מ־10 לכל 100 סקרים), תוך מעקב אחר העלות למענה.", "why": "התזכורות הן הסימן החזק ביותר לשיפור במענה.", "order": 23, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "survey", "kind": "recommendation", "section": "המלצות", "priority": "בינונית", "text": "להגביל את תדירות הסקרים ללקוח, למשל סקר אחד לכל 30 יום.", "why": "לקוחות מקבלים עשרות סקרים, מה שמייקר את השליחה ועלול לשחוק את המענה.", "order": 24, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "survey", "kind": "recommendation", "section": "המלצות", "priority": "בינונית", "text": "ללמוד מהאזורים שהשתפרו (\"מג׳ד אדיב\", \"מוחמד חלף\", \"הרצליה\") וליישם אצל הזכיינים ובאזור \"שירלי שמעוני גולדברג\".", "why": "הפער בין אלגד לזכיינים גדל.", "order": 25, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "survey", "kind": "recommendation", "section": "המלצות", "priority": "נמוכה", "text": "לבדוק עם ספק ה־SMS את העלייה בהודעות שפג תוקפן ואת תקלות הממשק החדשות.", "why": "השינוי קטן במספרים, אבל מעיד על שינוי במסלול השליחה.", "order": 26, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "survey", "kind": "recommendation", "section": "המלצות", "priority": "נמוכה", "text": "לבדוק את השינוי בשעות השליחה (היעלמות 11:00, פחות שליחה בשישי וראשון).", "why": "לוודא שהשינוי מכוון.", "order": 27, "period": "אוגוסט–אוקטובר 2025 מול 2026"}, {"stream": "marketing", "kind": "conclusion", "section": "א. היקף ותמהיל", "text": "בארבעה ימים נשלחו 742,482 הודעות שיווקיות ל־396,200 לקוחות, ב־10 קמפיינים. כ־97% מההודעות נשלחו בשני גלים: סאנדיי פאנדיי ב־1/11 (392,792 הודעות) וגל של שלושה קמפיינים ב־3/11 (\"משלימים פערים\", CRAZY NOVEMBER קוד מתחדש, CRAZY NOVEMBER VIP).", "source": "קמפיינים", "order": 28, "period": "1–4 בנובמבר 2026"}, {"stream": "marketing", "kind": "conclusion", "section": "א. היקף ותמהיל", "text": "ההודעות נחתכו ל־1.71 מיליון מקטעים לחיוב, בממוצע 2.3 מקטעים להודעה.", "source": "קמפיינים", "order": 29, "period": "1–4 בנובמבר 2026"}, {"stream": "marketing", "kind": "conclusion", "section": "א. היקף ותמהיל", "text": "שני קמפייני CRAZY NOVEMBER (קוד מתחדש ו־VIP) תופסים 27% מהמקטעים, למרות שהם רק 16% מההודעות: כל הודעה בהם היא 3–4 מקטעים, בעיקר בגלל פסקת התנאים הארוכה.", "source": "קמפיינים", "order": 30, "period": "1–4 בנובמבר 2026"}, {"stream": "marketing", "kind": "conclusion", "section": "ב. תדירות משלוח ללקוח", "text": "ממוצע של 1.87 הודעות ללקוח בארבעה ימים. 85% מהלקוחות (כ־338 אלף) קיבלו 2 הודעות ומעלה, ו־2% קיבלו 3–4 הודעות.", "source": "תדירות ללקוח", "order": 31, "period": "1–4 בנובמבר 2026"}, {"stream": "marketing", "kind": "conclusion", "section": "ב. תדירות משלוח ללקוח", "text": "הדפוס כמעט אחיד: הודעה ב־1/11 ועוד הודעה ב־3/11. המרווח החציוני בין שתי הודעות לאותו לקוח הוא 48 שעות בדיוק. 51.6% מהלקוחות קיבלו \"סאנדיי פאנדיי\" ואחריו \"משלימים פערים\", ו־30% קיבלו \"סאנדיי פאנדיי\" ואחריו אחד מקמפייני CRAZY NOVEMBER.", "source": "תדירות ללקוח", "order": 32, "period": "1–4 בנובמבר 2026"}, {"stream": "marketing", "kind": "conclusion", "section": "ב. תדירות משלוח ללקוח", "text": "אם הקצב של ארבעת הימים נמשך לאורך החודש, מדובר בכ־3 הודעות שיווקיות ללקוח בשבוע. זו הערכה בלבד, כי הקובץ מכסה ארבעה ימים.", "source": "תדירות ללקוח", "order": 33, "period": "1–4 בנובמבר 2026"}, {"stream": "marketing", "kind": "conclusion", "section": "ב. תדירות משלוח ללקוח", "text": "בכ־9,900 מקרים לקוח קיבל יותר מהודעה אחת באותו יום, ובכ־6,300 מקרים שתי הודעות הגיעו בהפרש של פחות משעה, בעיקר שילוב של קמפיין ראשי עם תזכורת למימוש הטבה או פיצה מתנה.", "source": "תדירות ללקוח", "order": 34, "period": "1–4 בנובמבר 2026"}, {"stream": "marketing", "kind": "conclusion", "section": "ג. מסירה וכשלים", "text": "שיעור המסירה 96.2%. שיעור הכשל הטכני הוא 2.4%, ורובו בסאנדיי פאנדיי: 3.6% כשל, מתוכם כ־10,600 הודעות שפג תוקפן לפני שנמסרו.", "source": "כשלים", "order": 35, "period": "1–4 בנובמבר 2026"}, {"stream": "marketing", "kind": "conclusion", "section": "ג. מסירה וכשלים", "text": "סאנדיי פאנדיי היה בתוקף ליום אחד בלבד (1/11), ונשלח רק בשעות 16:00–18:00. הודעה שנמסרת באיחור, או לא נמסרת, מפסידה את ההטבה לגמרי. כדאי לשלוח הטבה של יום אחד מוקדם יותר, או לפזר את השליחה.", "source": "כשלים, יום ושעה", "order": 36, "period": "1–4 בנובמבר 2026"}, {"stream": "marketing", "kind": "conclusion", "section": "ג. מסירה וכשלים", "text": "1,974 מספרים נכשלו בגלל כשל קבוע: מספר לא קיים, לא פעיל או חסום אצל המפעיל. ממשיכים לשלוח אליהם ולשלם על זה.", "source": "כשלים", "order": 37, "period": "1–4 בנובמבר 2026"}, {"stream": "marketing", "kind": "conclusion", "section": "ג. מסירה וכשלים", "text": "שיעור החסימה כמעט אפסי: 72 הודעות בלבד (0.01%). נראה שרשימת הדיוור מסוננת ללקוחות שאישרו דיוור שיווקי.", "source": "קמפיינים", "order": 38, "period": "1–4 בנובמבר 2026"}, {"stream": "marketing", "kind": "conclusion", "section": "ג. מסירה וכשלים", "text": "כ־9,800 הודעות מ־3/11 עדיין \"ללא סטטוס סופי\", כנראה כי הקובץ הופק מוקדם. שיעור המסירה בפועל של קמפייני 3/11 צפוי להיות גבוה יותר.", "source": "קמפיינים", "order": 39, "period": "1–4 בנובמבר 2026"}, {"stream": "marketing", "kind": "conclusion", "section": "ד. איכות נתונים", "text": "כ־5,500 הודעות נשלחו עם שם משובש: שאריות ירידת שורה (\"מיכלnnnnמיכל\"), כתובות מייל בתוך השם, או מילים חוזרות (\"אורנה אורנה אורנה\"). זה פוגע באפקט האישי של ההודעה.", "source": "איכות נתונים", "order": 40, "period": "1–4 בנובמבר 2026"}, {"stream": "marketing", "kind": "conclusion", "section": "ד. איכות נתונים", "text": "כ־70 הודעות נשלחו לגופים מוסדיים (למשל תנועת נוער ומועדון ספורט), ושני מספרים קיבלו 24–25 הודעות. סביר שאלה מספרי בדיקה פנימיים.", "source": "איכות נתונים", "order": 41, "period": "1–4 בנובמבר 2026"}, {"stream": "marketing", "kind": "recommendation", "section": "המלצות", "priority": "גבוהה", "text": "לקבוע מדיניות תדירות ללקוח (למשל עד 2 הודעות שיווקיות בשבוע) ולמדוד אותה לאורך חודש שלם.", "why": "85% מהלקוחות קיבלו 2 הודעות ב־48 שעות.", "order": 42, "period": "1–4 בנובמבר 2026"}, {"stream": "marketing", "kind": "recommendation", "section": "המלצות", "priority": "גבוהה", "text": "לקצר את פסקת התנאים בקמפייני CRAZY NOVEMBER ולהעביר את רובה לדף הנחיתה.", "why": "הודעה של 4 מקטעים עולה כמו שתי הודעות רגילות; 27% מהמקטעים בארבעה ימים.", "order": 43, "period": "1–4 בנובמבר 2026"}, {"stream": "marketing", "kind": "recommendation", "section": "המלצות", "priority": "גבוהה", "text": "להסיר מרשימת הדיוור את 1,974 המספרים עם כשל קבוע.", "why": "משלמים על הודעות שלא יימסרו.", "order": 44, "period": "1–4 בנובמבר 2026"}, {"stream": "marketing", "kind": "recommendation", "section": "המלצות", "priority": "בינונית", "text": "לשלוח הטבות של יום אחד מוקדם יותר ביום, ולבדוק עם הספק את תוקף ההודעה (validity) בשליחות גדולות.", "why": "כ־10,600 הודעות של סאנדיי פאנדיי פגו לפני שנמסרו.", "order": 45, "period": "1–4 בנובמבר 2026"}, {"stream": "marketing", "kind": "recommendation", "section": "המלצות", "priority": "בינונית", "text": "לנקות את שדה השם: להסיר שאריות \"n\", כתובות מייל ומילים חוזרות, ולהשתמש בפנייה כללית כשהשם לא תקין.", "why": "כ־5,500 הודעות עם שם משובש.", "order": 46, "period": "1–4 בנובמבר 2026"}, {"stream": "marketing", "kind": "recommendation", "section": "המלצות", "priority": "בינונית", "text": "למנוע שליחת שתי הודעות לאותו לקוח באותו יום, אלא אם השנייה היא תזכורת מכוונת.", "why": "כ־9,900 מקרים של יותר מהודעה ביום.", "order": 47, "period": "1–4 בנובמבר 2026"}, {"stream": "marketing", "kind": "recommendation", "section": "המלצות", "priority": "נמוכה", "text": "למלא את שדה \"שם הקמפיין\" בכל שליחה.", "why": "השדה ריק בכל הקובץ, והקמפיינים זוהו כאן רק לפי הנוסח.", "order": 48, "period": "1–4 בנובמבר 2026"}, {"stream": "marketing", "kind": "recommendation", "section": "המלצות", "priority": "נמוכה", "text": "להפיק את הדוח אחרי שהתקבלו כל אישורי המסירה (יום או יומיים אחרי השליחה).", "why": "כ־9,800 הודעות ללא סטטוס סופי.", "order": 49, "period": "1–4 בנובמבר 2026"}]</script>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, writeBatch, query, where, documentId, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { start } from './app.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDEvNCbEqngrYY1O_99gTmg0Wwy9sWmsCI",
+  authDomain: "infousms-abdc7.firebaseapp.com",
+  projectId: "infousms-abdc7",
+  storageBucket: "infousms-abdc7.firebasestorage.app",
+  messagingSenderId: "17475765133",
+  appId: "1:17475765133:web:bf7f3c8e8c54596351b3c4"
+};
+
+const fb = initializeApp(firebaseConfig);
+const auth = getAuth(fb);
+const db = getFirestore(fb);
+const all = async (name) => (await getDocs(collection(db, name))).docs.map((d) => ({ id: d.id, ...d.data() }));
+
+const adapter = {
+  onUser: (cb) => onAuthStateChanged(auth, cb),
+  signOut: () => signOut(auth),
+  loadDays: () => all('days'),
+  loadSettings: async () => { const s = await getDoc(doc(db, 'settings', 'main')); return s.exists() ? s.data() : null; },
+  saveSettings: (s) => setDoc(doc(db, 'settings', 'main'), s),
+  loadResponses: () => all('responses'),
+  saveResponse: (r) => setDoc(doc(db, 'responses', r.id), r),
+  loadInsights: () => all('insights'),
+  addInsight: async (i) => { const { id, ...data } = i; return (await addDoc(collection(db, 'insights'), data)).id; },
+  deleteInsight: (id) => deleteDoc(doc(db, 'insights', id)),
+  loadDailyInsights: () => all('dailyInsights'),
+  saveDailyInsight: (d) => setDoc(doc(db, 'dailyInsights', `${d.stream}_${d.date}`), d),
+  loadImports: async () => (await getDocs(query(collection(db, 'imports'), orderBy('at', 'desc'), limit(15)))).docs.map((d) => d.data()),
+  logImport: (d) => addDoc(collection(db, 'imports'), d),
+  async loadFreq(stream, from, to, onProgress) {
+    const q = query(collection(db, 'freq'), where(documentId(), '>=', `${stream}_${from}`), where(documentId(), '<=', `${stream}_${to}_\uf8ff`));
+    const snap = await getDocs(q);
+    onProgress && onProgress(snap.size);
+    return snap.docs.map((d) => d.data());
+  },
+  // Writes day summaries + phone shards. Re-importing a day replaces it.
+  async writeDays(results, existing, onProgress) {
+    const ops = [];
+    const now = new Date().toISOString();
+    for (const r of results) {
+      ops.push({ ref: doc(db, 'days', r.id), data: { ...r.doc, importedAt: now }, size: JSON.stringify(r.doc).length });
+      r.shards.forEach((s, i) => ops.push({ ref: doc(db, 'freq', `${r.id}_${i}`), data: { stream: r.doc.stream, date: r.doc.date, i, d: s }, size: s.length }));
+      const old = existing.get(r.id) || 0;
+      for (let j = r.shards.length; j < old; j++) ops.push({ ref: doc(db, 'freq', `${r.id}_${j}`), del: true, size: 100 });
+    }
+    let batch = writeBatch(db), count = 0, bytes = 0, done = 0;
+    for (const op of ops) {
+      if (count >= 400 || bytes + op.size > 7_000_000) { await batch.commit(); batch = writeBatch(db); count = 0; bytes = 0; }
+      if (op.del) batch.delete(op.ref); else batch.set(op.ref, op.data);
+      count++; bytes += op.size; done++;
+      if (done % 25 === 0) onProgress(done, ops.length);
+    }
+    await batch.commit();
+    onProgress(ops.length, ops.length);
+  },
+};
+
+document.getElementById('gLogin').onclick = async () => {
+  try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch (e) { document.getElementById('loginErr').textContent = 'הכניסה נכשלה: ' + e.code; }
+};
+document.getElementById('eLogin').onsubmit = async (e) => {
+  e.preventDefault(); const f = new FormData(e.target);
+  try { await signInWithEmailAndPassword(auth, f.get('email'), f.get('password')); } catch (err) { document.getElementById('loginErr').textContent = 'מייל או סיסמה שגויים (' + err.code + ')'; }
+};
+start(adapter);
+</script>
+</body>
+</html>

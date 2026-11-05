@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // הוסיפו כאן את כתובות המייל של מי שמורשה לראות ולעדכן את הדשבורד
+    function allowedEmails() {
+      return ['your.name@company.co.il'];
+    }
+    function allowed() {
+      return request.auth != null
+        && request.auth.token.email in allowedEmails()
+        && (request.auth.token.email_verified == true
+            || request.auth.token.firebase.sign_in_provider == 'password');
+    }
+    match /{document=**} {
+      allow read, write: if allowed();
+    }
+  }
+}
