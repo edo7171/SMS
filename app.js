@@ -2,7 +2,7 @@
 import {
   STREAMS, FAIL_CATS, PERMANENT_CATS, CsvStream, DayAggregator, sumDays,
   parseShardsInto, frequencyStats, phoneHash, safeKey,
-} from './sms-core.js';
+} from './sms-core.js?v=20261108b';
 
 // ============ small utilities ============
 const $ = (s, el = document) => el.querySelector(s);
