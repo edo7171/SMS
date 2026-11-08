@@ -806,7 +806,7 @@ async function importCsv(files) {
       const other = Object.entries(agg.otherGroups).map(([k, v]) => `${k}: ${fN(v)}`).join(', ');
       const summary = Object.entries(byStream).map(([s, b]) => `${STREAMS[s]}: ${fN(b.n)} הודעות, ${b.days} ימים (${fmtDate(b.from)}–${fmtDate(b.to)})`).join(' | ');
       await S.db.logImport({ file: file.name, rows: agg.rows, summary, other, at: new Date().toISOString(), by: S.user?.email || '' });
-      summaries.push(`<p class="good">${esc(file.name)}: ${esc(summary)}.${other ? ` הודעות אחרות שלא נכללו: ${esc(other)}.` : ''}${agg.skipped ? ` ${fN(agg.skipped)} שורות ללא תאריך דולגו.` : ''}</p>`);
+      summaries.push(`<p class="good">${esc(file.name)}: ${esc(summary)}.${other ? ` הודעות אחרות שלא נכללו: ${esc(other)}.` : ''}${agg.skipped ? ` ${fN(agg.skipped)} שורות ללא תאריך דולגו.` : ''}${agg.duplicates ? ` ${fN(agg.duplicates)} הודעות כפולות דולגו.` : ''}</p>`);
       await reloadDays();
       if (!S.A || !lastDate(S.stream)) { if (!lastDate(S.stream)) S.stream = Object.keys(byStream)[0]; initPeriod(); }
       for (const [s, b] of Object.entries(byStream)) await saveDailyInsight(s, b.to, dailyInsights(s, b.to));
