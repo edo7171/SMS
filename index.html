@@ -173,8 +173,9 @@ ul.plain { list-style: none; padding: 0; }
   <div class="login-box">
     <h1>דשבורד SMS</h1>
     <p>סקרי לקוחות ודיוור שיווקי — דומינו׳ס</p>
+    <noscript><p class="err">יש להפעיל JavaScript כדי להתחבר.</p></noscript>
     <button class="btn" id="gLogin" type="button">כניסה עם Google</button>
-    <form id="eLogin">
+    <form id="eLogin" method="post" action="#" onsubmit="return false" autocomplete="on">
       <input type="email" name="email" placeholder="כתובת מייל" autocomplete="username" required>
       <input type="password" name="password" placeholder="סיסמה" autocomplete="current-password" required>
       <button class="btn ghost">כניסה עם מייל וסיסמה</button>
