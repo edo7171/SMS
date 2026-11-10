@@ -216,7 +216,7 @@ function addCounts(c, st, seg) {
 }
 
 export class DayAggregator {
-  constructor() { this.days = new Map(); this.rows = 0; this.skipped = 0; this.otherGroups = {}; }
+  constructor() { this.days = new Map(); this.rows = 0; this.skipped = 0; this.duplicates = 0; this.seen = new Set(); this.otherGroups = {}; }
 
   key(stream, date) { return stream + '_' + date; }
 
@@ -225,6 +225,11 @@ export class DayAggregator {
     row = normalizeRow(row);
     const t = parseDate(row[COL.date]);
     if (!t) { this.skipped++; return; }
+    // the same message can appear in more than one report (e.g. two inforu sub-account reports
+    // with identical content): count each phone + send time + text only once
+    const dup = cyrb53(normPhone(row[COL.phone]) + '|' + String(row[COL.date]).trim() + '|' + String(row[COL.text] || ''));
+    if (this.seen.has(dup)) { this.duplicates++; return; }
+    this.seen.add(dup);
     const cls = classify(row);
     if (cls.stream === 'other') { this.otherGroups[cls.group] = (this.otherGroups[cls.group] || 0) + 1; }
     const k = this.key(cls.stream, t.date);
