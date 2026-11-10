@@ -1,0 +1,41 @@
+name: Import large SMS report
+
+# Triggered by the Apps Script when an inforu e-mail has a download link instead of an attachment.
+on:
+  repository_dispatch:
+    types: [sms-large-report]
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Download link of the report (CSV)'
+        required: true
+      name:
+        description: 'File name (for the import log)'
+        required: false
+        default: 'manual.csv'
+
+concurrency:
+  group: sms-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Hide the download link in the logs
+        env:
+          URL_IN: ${{ github.event.client_payload.url || inputs.url }}
+        run: echo "::add-mask::$URL_IN"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install firebase-admin
+        run: npm install --no-save --no-package-lock firebase-admin@12.1.0
+      - name: Import
+        env:
+          REPORT_URL: ${{ github.event.client_payload.url || inputs.url }}
+          REPORT_NAME: ${{ github.event.client_payload.name || inputs.name }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node --max-old-space-size=6000 tools/import-url.mjs
