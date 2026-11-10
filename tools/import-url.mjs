@@ -11,6 +11,8 @@ const API_KEY = 'AIzaSyDEvNCbEqngrYY1O_99gTmg0Wwy9sWmsCI'; // public web key, sa
 const AUTH_BASE = process.env.AUTH_BASE || 'https://identitytoolkit.googleapis.com';
 const FS_HOST = process.env.FS_HOST || 'https://firestore.googleapis.com';
 const DOCS = `projects/${PROJECT_ID}/databases/(default)/documents`;
+// The web API key is restricted to the dashboard's site, so sign-in identifies itself with that site.
+const REFERER = process.env.FIREBASE_REFERER || 'https://edo7171.github.io/SMS/';
 
 const url = process.env.REPORT_URL;
 const name = process.env.REPORT_NAME || 'report.csv';
@@ -30,7 +32,7 @@ async function aggregate() {
     if (read >= nextLog) { console.log(`downloaded ${(read / 1e6).toFixed(0)}MB${total ? ' / ' + (total / 1e6).toFixed(0) + 'MB' : ''}, rows ${agg.rows}`); nextLog += 50e6; }
   }
   csv.push(dec.decode()); csv.end();
-  console.log(`done: ${(read / 1e6).toFixed(1)}MB, ${agg.rows} rows, ${agg.duplicates} duplicates, ${agg.skipped} without date`);
+  console.log(`done: ${(read / 1e6).toFixed(1)}MB, ${agg.rows} rows, ${agg.duplicates ?? 'n/a (old sms-core.js)'} duplicates, ${agg.skipped} without date`);
   return agg;
 }
 
@@ -39,7 +41,7 @@ async function signIn() {
   const email = process.env.FIREBASE_IMPORT_EMAIL, password = process.env.FIREBASE_IMPORT_PASSWORD;
   if (!email || !password) throw new Error('FIREBASE_IMPORT_EMAIL / FIREBASE_IMPORT_PASSWORD secrets are missing');
   const res = await fetch(`${AUTH_BASE}/v1/accounts:signInWithPassword?key=${API_KEY}`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, returnSecureToken: true }),
+    method: 'POST', headers: { 'Content-Type': 'application/json', Referer: REFERER }, body: JSON.stringify({ email, password, returnSecureToken: true }),
   });
   const j = await res.json();
   if (!res.ok || !j.idToken) throw new Error(`Firebase sign-in failed: ${j.error?.message || res.status}`);
