@@ -31,11 +31,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Install firebase-admin
-        run: npm install --no-save --no-package-lock firebase-admin@12.1.0
       - name: Import
         env:
           REPORT_URL: ${{ github.event.client_payload.url || inputs.url }}
           REPORT_NAME: ${{ github.event.client_payload.name || inputs.name }}
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_IMPORT_EMAIL: ${{ secrets.FIREBASE_IMPORT_EMAIL }}
+          FIREBASE_IMPORT_PASSWORD: ${{ secrets.FIREBASE_IMPORT_PASSWORD }}
         run: node --max-old-space-size=6000 tools/import-url.mjs
