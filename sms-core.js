@@ -171,6 +171,17 @@ function headlineName(text) {
   return 'קמפיין: ' + (first.slice(0, 45) || 'ללא כותרת');
 }
 
+export const OPERATIONAL_PREFIX = 'תפעולי: ';
+export function operationalGroup(text, campaignField = '') {
+  const s = text + ' ' + campaignField;
+  let g = 'אחר';
+  if (/קוד ה?אימות|verification|OTP|סיסמה חד/i.test(s)) g = 'קוד אימות';
+  else if (/התקבלה הזמנה|הזמנתך|ההזמנה שלך|מספר הזמנה|השליח|בדרך אליך|מוכנה לאיסוף|איסוף עצמי|משלוח/.test(s)) g = 'עדכון הזמנה';
+  else if (/משמרת|תלוש|עובד|workers|staff/i.test(s)) g = 'עובדים ומשמרות';
+  else if (/סניף\s*:/.test(s)) g = 'הודעת סניף';
+  return OPERATIONAL_PREFIX + g;
+}
+
 export function classify(row) {
   const text = String(row[COL.text] || '').replace(/\u00a0/g, ' ');
   const sender = String(row[COL.sender] || '').trim();
@@ -192,7 +203,14 @@ export function classify(row) {
   }
   if (text.includes('פנייתך התקבלה')) { out.group = 'אישור פנייה לשירות לקוחות'; return out; }
   if (text.includes('סה"כ שענו')) { out.group = 'דוח סניפים פנימי'; return out; }
-  if (/^dominos$/i.test(sender) || text.includes('הסרה')) {
+  // Marketing = advertising, which by law carries an opt-out ("להסרה"). Messages from the same
+  // sender without an opt-out are operational (order updates, OTP codes, staff shifts) and are not analysed.
+  const hasOptOut = /(^|[^\u05d0-\u05ea])ל?הסר(ה|ת)?([^\u05d0-\u05ea]|$)/.test(text);
+  if (!hasOptOut && (/^dominos$/i.test(sender) || campaignField)) {
+    out.group = operationalGroup(text, campaignField);
+    return out;
+  }
+  if (hasOptOut) {
     out.stream = 'marketing';
     // the survey system puts technical ids here ("11120757629,GYWx5geoGvB"); only real names are used
     if (campaignField && !/^\d{5,},/.test(campaignField)) { out.group = campaignField; return out; }
